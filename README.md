@@ -116,3 +116,13 @@ keine Sonderbehandlung → rohe Daten sichtbar
 9. Keine Hotkeys
 
 Nur Buttons.
+
+ToDo:
+
+Remove all inline JavaScript from HTML files due to Manifest V3 CSP restrictions (see above).
+
+Only load JavaScript via external files and bind events in JS.
+
+Set the OCR server default URL to http://localhost:8884/tesseract wherever a default is needed.
+
+Ensure the extension is fully usable without any CSP errors and OCR works out of the box.
