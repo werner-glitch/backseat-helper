@@ -121,21 +121,12 @@ class OptionsUI {
       ollamaUrl: document.getElementById('ollamaUrl').value.trim(),
       model: document.getElementById('model').value.trim(),
       ocrUrl: document.getElementById('ocrUrl').value.trim(),
-      ocrLanguages: document.getElementById('ocrLanguages').value
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s),
+      ocrLanguages: document.getElementById('ocrLanguages').value.split(',').map(s => s.trim()).filter(s => s),
       prompt: document.getElementById('prompt').value.trim(),
       filters: {
         regex: document.getElementById('regexFilter').value.trim(),
-        domInclude: document.getElementById('domInclude').value
-          .split('\n')
-          .map(s => s.trim())
-          .filter(s => s),
-        domExclude: document.getElementById('domExclude').value
-          .split('\n')
-          .map(s => s.trim())
-          .filter(s => s)
+        domInclude: document.getElementById('domInclude').value.split('\n').map(s => s.trim()).filter(s => s),
+        domExclude: document.getElementById('domExclude').value.split('\n').map(s => s.trim()).filter(s => s)
       }
     };
 
@@ -239,7 +230,6 @@ class OptionsUI {
   }
 }
 
-// Initialize on DOM ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     new OptionsUI();
@@ -247,185 +237,3 @@ if (document.readyState === 'loading') {
 } else {
   new OptionsUI();
 }
-
-  async saveProfile() {
-    const name = document.getElementById('profileName').value.trim();
-    if (!name) {
-      this.showStatus('Profilname erforderlich', 'error');
-      return;
-    }
-
-    const profile = {
-      name: name,
-      ollamaUrl: document.getElementById('ollamaUrl').value.trim(),
-      model: document.getElementById('model').value.trim(),
-      ocrUrl: document.getElementById('ocrUrl').value.trim(),
-      ocrLanguages: document.getElementById('ocrLanguages').value.split(',').map(l => l.trim()).filter(l => l),
-      prompt: document.getElementById('prompt').value.trim(),
-      filters: {
-        regex: document.getElementById('regexFilter').value.trim(),
-        domInclude: document.getElementById('domInclude').value.split('\n').map(s => s.trim()).filter(s => s),
-        domExclude: document.getElementById('domExclude').value.split('\n').map(s => s.trim()).filter(s => s)
-      }
-    };
-
-    // Validate inputs
-    if (!profile.ollamaUrl || !profile.model) {
-      this.showStatus('Ollama URL und Modell sind erforderlich', 'error');
-      return;
-    }
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'saveProfile',
-        profile: profile
-      });
-
-      if (response.success) {
-        this.showStatus(`Profil "${name}" gespeichert`, 'success');
-        this.hideForm();
-        this.loadProfiles();
-      } else {
-        this.showStatus('Fehler beim Speichern', 'error');
-      }
-    } catch (error) {
-      this.showStatus(`Fehler: ${error.message}`, 'error');
-    }
-  }
-
-  async deleteProfile(name) {
-    if (!confirm(`Profil "${name}" wirklich löschen?`)) {
-      return;
-    }
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'deleteProfile',
-        profileName: name
-      });
-
-      if (response.success) {
-        this.showStatus(`Profil "${name}" gelöscht`, 'success');
-        this.loadProfiles();
-      } else {
-        this.showStatus('Fehler beim Löschen', 'error');
-      }
-    } catch (error) {
-      this.showStatus(`Fehler: ${error.message}`, 'error');
-    }
-  }
-
-  async selectProfile(name) {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'setProfile',
-        profileName: name
-      });
-
-      if (response.success) {
-        this.showStatus(`Profil "${name}" ausgewählt`, 'success');
-        this.loadProfiles();
-      } else {
-        this.showStatus('Fehler beim Auswählen', 'error');
-      }
-    } catch (error) {
-      this.showStatus(`Fehler: ${error.message}`, 'error');
-    }
-  }
-
-  async exportProfiles() {
-    try {
-      const response = await chrome.runtime.sendMessage({ action: 'exportProfiles' });
-
-      if (response.success) {
-        const blob = new Blob([response.data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backseat-profiles-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        this.showStatus('Profile exportiert', 'success');
-      } else {
-        this.showStatus('Fehler beim Export', 'error');
-      }
-    } catch (error) {
-      this.showStatus(`Fehler: ${error.message}`, 'error');
-    }
-  }
-
-  showImportModal() {
-    document.getElementById('importModal').classList.add('show');
-    document.getElementById('importText').value = '';
-    document.getElementById('importText').focus();
-  }
-
-  hideImportModal() {
-    document.getElementById('importModal').classList.remove('show');
-  }
-
-  async importProfiles() {
-    const json = document.getElementById('importText').value.trim();
-    
-    if (!json) {
-      this.showStatus('JSON erforderlich', 'error');
-      return;
-    }
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'importProfiles',
-        data: json
-      });
-
-      if (response.success) {
-        this.showStatus('Profile importiert', 'success');
-        this.hideImportModal();
-        this.loadProfiles();
-      } else {
-        this.showStatus('Fehler beim Import', 'error');
-      }
-    } catch (error) {
-      this.showStatus(`Fehler: ${error.message}`, 'error');
-    }
-  }
-
-  hideForm() {
-    document.getElementById('profileForm').style.display = 'none';
-    this.currentEditingProfile = null;
-  }
-
-  clearForm() {
-    document.getElementById('profileName').value = '';
-    document.getElementById('ollamaUrl').value = '';
-    document.getElementById('model').value = '';
-    document.getElementById('ocrUrl').value = '';
-    document.getElementById('ocrLanguages').value = '';
-    document.getElementById('prompt').value = '';
-    document.getElementById('regexFilter').value = '';
-    document.getElementById('domInclude').value = '';
-    document.getElementById('domExclude').value = '';
-  }
-
-  showStatus(message, type) {
-    const statusEl = document.getElementById('statusMessage');
-    statusEl.textContent = message;
-    statusEl.className = `status-message show ${type}`;
-    setTimeout(() => {
-      statusEl.classList.remove('show');
-    }, 4000);
-  }
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  new OptionsManager();
-});

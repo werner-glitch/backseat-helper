@@ -96,19 +96,7 @@
     </div>
   </div>
 
-  <script>
-    document.getElementById('openSettings').addEventListener('click', () => {
-      chrome.runtime.openOptionsPage();
-    });
-
-    chrome.runtime.sendMessage({ action: 'getProfile' }, (response) => {
-      if (response && response.success) {
-        const statusDiv = document.getElementById('statusDiv');
-        statusDiv.textContent = `Profil: ${response.profile.name}`;
-        statusDiv.className = 'status active';
-      }
-    });
-  </script>
+  <script src="popup.js"></script>
 </body>
 </html>
       gap: 8px;
