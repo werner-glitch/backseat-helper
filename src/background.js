@@ -89,8 +89,11 @@ async function processOCR(imageDataUrl, ocrUrl, languages) {
   
   const formData = new FormData();
   formData.append('file', blob, 'screenshot.png');
+  
+  // OCR Server erwartet: -F 'options={"languages":["deu","eng"]}'
   if (languages && languages.length > 0) {
-    formData.append('languages', languages.join(','));
+    const options = { languages: languages };
+    formData.append('options', JSON.stringify(options));
   }
   
   try {
