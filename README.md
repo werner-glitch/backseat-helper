@@ -1,87 +1,118 @@
 # backseat-helper
 Backseat Driver Extension: Funktionsbeschreibung & Anforderungen
-Grundidee
+Bitte erstelle eine komplett neue Chrome‑Extension (Manifest V3, Vanilla‑JS, keine Frameworks).
 
-Die Erweiterung ("Backseat Driver") hilft dem Nutzer, Webseiten zu hinterfragen, Formulare auszufüllen und neue Perspektiven zu entdecken. Die KI arbeitet als diskreter Co-Pilot ("Backseat Driver") im Browser.
+1. Grundstruktur
 
-Hauptfunktionen
+background.js (KI/OCR/Profil‑Logik)
 
-Collapsible Chat-Panel am unteren Rand der Seite (volle Breite, rund, aber ohne Schatten). Darunter ein einblendbares Logging/Debug-Fenster.
+content.js (DOM‑Extraktion)
 
-Profile:
+chat-panel.js (UI der unteren Konsole + Debug‑Fenster)
 
-Speichern von individuellen Profilen mit folgenden Infos:
+options.html + options.js (Profilverwaltung)
 
-Ollama URL (Serveradresse)
+popup.html (minimal)
 
-Modell (z.B. llama3)
+manifest.json
 
-OCR-Server URL (optional, z.B. /tesseract)
+2. Profil-System
 
-Prompt (Systemprompt, frei editierbar, pro Profil)
+Jedes Profil enthält:
 
-Sprachen für OCR (z.B. "deu,eng")
+name
 
-Textfilter (Regex)
+ollamaUrl
 
-DOM-Filter (CSS-Selektoren, + für Include, - für Exclude, eine Zeile pro Selektor)
+model
 
-Import / Export der Profile als Datei/JSON/Text
+ocrUrl
 
-Auswahl des Profils über das Chatfenster
+ocrLanguages (Array)
 
-Beim Wechseln des Profils werden alle zugehörigen Einstellungen übernommen.
+prompt
 
-Workflow
+filters.regex (string)
 
-Screenshot erstellen (über Button im Chatpanel)
-→ Das Bild wird per OCR-Server ausgewertet.
-→ Nur das OCR-Textresultat wird an die KI geschickt, mit Bezug auf Prompt und evtl. Chatfrage.
-→ Antwort der KI wird im Chatpanel angezeigt.
+filters.domInclude (array)
 
-Gesamter Seitentext extrahieren
+filters.domExclude (array)
 
-Strg+A (Select All): Gesamter sichtbarer Text der Seite wird extrahiert
+Funktionen:
 
-DOM-basiert: Optional dom-basiert gefiltert (siehe Filter unten)
+speichern/ändern/löschen
 
-Ergebnis wird zuerst durch DOM-Filter, dann Textfilter (Regex) gejagt, und im Logfenster angezeigt.
+export/import als JSON
 
-Noch kein Versand an die KI (nur Ansicht).
+Default-Profil automatisch anlegen
 
-URL, Prompt, Modell, Sprache, OCR-URL werden jeweils automatisch vorausgefüllt und gespeichert.
+3. Screenshot & OCR
 
-Debug/Logging:
+chrome.tabs.captureVisibleTab → PNG
 
-Schalter im Chatpanel: Zeigt alle aktuell verwendeten Daten/Inputs an (inkl. Anzahl Zeichen).
+an OCR senden
 
-Debug-Ausgaben erscheinen im Logging-Fenster.
+OCR-Antwort (stdout) ist der Haupttext, der später an KI geht
 
-Filter-Konfiguration
+4. DOM-Extraktion
 
-Im Profil sind zwei editierbare Textfelder:
+Nur anzeigen, NICHT an KI schicken
+Filter:
 
-Textfilter: Regex (wird auf extrahierten Text angewendet)
+regex: anwenden
 
-DOM-Filter: CSS-Selektoren (eine Zeile pro Selektor, Präfix + oder -)
+domInclude/domExclude: anwenden
 
-Beispiel:
+5. Gesamtes Seiten-Text-Backup
 
-+main
--nav
--footer
+STRG+A‑Äquivalent (textContent der Seite)
+Nur im Debug anzeigen.
 
+6. Prompt-Build
 
-Filter sind pro Profil speicherbar und werden beim Extrahieren/Versenden angewendet.
+Die KI erhält NUR:
 
-Weitere Hinweise
+prompt (aus Profil)
 
-Kein Hotkey-Support.
+Frage (falls gestellt)
 
-Jedes Profil kann genau einen Ollama- und einen OCR-Server nutzen.
+OCR‑Text (als Content)
 
-Lange Texte (ggf. Stückelung) sollen unterstützt werden (später).
+Keine anderen Quellen zuerst!
 
-Standardprofil/-werte direkt mitliefern (sodass bei frischer Installation alles ausgefüllt ist).
+7. Chat-Schnittstelle
 
-UX: Modern, clean, aber nicht fancy. Keine Schatten, nur sanft gerundet.
+Schubladenpanel am unteren Bildschirmrand
+
+Ein-/Ausklappbar
+
+Logging‑Fenster dadrunter (separat ein-/ausklappbar)
+
+Buttons:
+
+Screenshot senden
+
+Fragen senden
+
+8. Debug-Modus
+
+Ein/Aus‑Schalter
+Bei AN:
+
+zeige OCR‑Text
+
+zeige DOM‑Text gefiltert
+
+zeige Full‑Text
+
+zeige finalen KI‑Prompt
+
+zeige KI‑Antwort
+
+zeige Fehlermeldungen
+
+keine Sonderbehandlung → rohe Daten sichtbar
+
+9. Keine Hotkeys
+
+Nur Buttons.
