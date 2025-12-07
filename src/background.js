@@ -82,10 +82,27 @@ async function importProfiles(jsonString) {
 }
 
 // === OCR Client ===
+// Utility: Konvertiere DataURL zu Blob für Multipart-Upload
+function dataUrlToBlob(dataUrl) {
+  const parts = dataUrl.split(',');
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const base64 = parts[1];
+  
+  const byteChars = atob(base64);
+  const byteNumbers = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNumbers[i] = byteChars.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mime });
+}
+
 async function processOCR(imageDataUrl, ocrUrl, languages) {
+
+
   // Konvertiere DataURL zu Blob für Multipart-Upload
-  const response = await fetch(imageDataUrl);
-  const blob = await response.blob();
+  const blob = dataUrlToBlob(imageDataUrl);
   
   const formData = new FormData();
   formData.append('file', blob, 'screenshot.png');
@@ -94,12 +111,11 @@ async function processOCR(imageDataUrl, ocrUrl, languages) {
   if (languages && languages.length > 0) {
     const options = { languages: languages };
     formData.append('options', JSON.stringify(options));
-  }
-  
-  try {
     const ocrResponse = await fetch(ocrUrl, {
       method: 'POST',
-      body: formData,
+
+  async function processOCR(imageDataUrl, ocrUrl, languages) {
+    // Konvertiere DataURL zu Blob für Multipart-Upload
       timeout: 30000
     });
     

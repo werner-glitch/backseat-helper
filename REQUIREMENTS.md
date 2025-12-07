@@ -56,9 +56,48 @@ Kritischer, KI-gestützter Begleiter für Webseiten. Nutzer können Profile mit 
 ## 3. Screenshot & OCR-Workflow
 
 1. **Screenshot**: `chrome.tabs.captureVisibleTab()` → PNG (DataURL)
-2. **OCR-Request**: POST zu `ocrUrl` mit Multipart-Form (Feld: `file`)
-3. **OCR-Antwort**: Nur Text-Output wird an KI geschickt
-4. **Keine Speicherung**: Screenshot wird sofort nach OCR verworfen
+
+2. **Wichtig: Datei-Upload (multipart/form-data)**
+
+- Der OCR-Server erwartet einen echten Datei-Upload im Multipart-Form-Body.
+- Feld `file`: das Bild als Datei/Blob (z. B. `screenshot.png`). Nicht: JSON mit Base64-String.
+- Feld `options`: ein JSON-String mit Einstellungen, z. B. `{"languages":["deu","eng"]}`.
+
+Beispiel HTTP (curl):
+
+```bash
+curl -X POST \
+  -F 'options={"languages":["deu","eng"]}' \
+  -F file=@test.png \
+  http://localhost:8884/tesseract
+```
+
+3. **DataURL → Blob**
+
+- `chrome.tabs.captureVisibleTab()` liefert eine DataURL (base64). Vor dem Senden an `/tesseract` muss diese DataURL in ein `Blob`/`File` umgewandelt werden.
+- Beispiel-Helper (Browser):
+
+```javascript
+function dataUrlToBlob(dataUrl) {
+  const parts = dataUrl.split(',');
+  const mime = parts[0].match(/:(.*?);/)[1];
+  const b64 = parts[1];
+  const binary = atob(b64);
+  const len = binary.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+
+// Dann:
+// const blob = dataUrlToBlob(imageDataUrl);
+// formData.append('file', blob, 'screenshot.png');
+// formData.append('options', JSON.stringify({ languages: ['deu','eng'] }));
+```
+
+4. **OCR-Antwort**: Nur Text-Output wird an die KI weitergegeben.
+
+5. **Keine Speicherung**: Screenshot/Blob werden nach OCR verworfen (keine Persistenz).
 
 ---
 
