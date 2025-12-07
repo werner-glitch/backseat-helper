@@ -1,260 +1,224 @@
-// background.js - Service Worker für KI/OCR/Profil-Logik
+// background.js - Service Worker: Profile, OCR, KI, Datenmanagement
 
-class ProfileManager {
-  constructor() {
-    this.storageKey = 'backseat_profiles';
-    this.currentProfileKey = 'backseat_currentProfile';
+const STORAGE_KEY = 'backseat_profiles';
+const CURRENT_PROFILE_KEY = 'backseat_currentProfile';
+
+// === Profile Manager ===
+async function getAllProfiles() {
+  const result = await chrome.storage.sync.get(STORAGE_KEY);
+  return result[STORAGE_KEY] || [];
+}
+
+async function getProfile(name) {
+  const profiles = await getAllProfiles();
+  return profiles.find(p => p.name === name);
+}
+
+async function getCurrentProfile() {
+  const result = await chrome.storage.sync.get(CURRENT_PROFILE_KEY);
+  const profileName = result[CURRENT_PROFILE_KEY];
+  if (!profileName) {
+    return getDefaultProfile();
   }
+  return getProfile(profileName);
+}
 
-  async getProfiles() {
-    const data = await chrome.storage.sync.get(this.storageKey);
-    return data[this.storageKey] || [];
+async function setCurrentProfile(name) {
+  await chrome.storage.sync.set({ [CURRENT_PROFILE_KEY]: name });
+}
+
+async function saveProfile(profile) {
+  const profiles = await getAllProfiles();
+  const index = profiles.findIndex(p => p.name === profile.name);
+  if (index >= 0) {
+    profiles[index] = profile;
+  } else {
+    profiles.push(profile);
   }
+  await chrome.storage.sync.set({ [STORAGE_KEY]: profiles });
+}
 
-  async getProfile(name) {
-    const profiles = await this.getProfiles();
-    return profiles.find(p => p.name === name);
-  }
+async function deleteProfile(name) {
+  const profiles = await getAllProfiles();
+  const filtered = profiles.filter(p => p.name !== name);
+  await chrome.storage.sync.set({ [STORAGE_KEY]: filtered });
+}
 
-  async getCurrentProfile() {
-    const data = await chrome.storage.sync.get(this.currentProfileKey);
-    const profileName = data[this.currentProfileKey];
-    if (!profileName) {
-      return this.getDefaultProfile();
+function getDefaultProfile() {
+  return {
+    name: 'Default',
+    ollamaUrl: 'http://localhost:11434',
+    model: 'llama3',
+    ocrUrl: 'http://localhost:8884/tesseract',
+    ocrLanguages: ['deu', 'eng'],
+    prompt: 'Du bist ein kritischer, neugieriger Begleiter. Stelle Fragen, stelle Annahmen infrage und biete neue Perspektiven.',
+    filters: {
+      regex: '',
+      domInclude: [],
+      domExclude: []
     }
-    return this.getProfile(profileName);
-  }
+  };
+}
 
-  async setCurrentProfile(name) {
-    await chrome.storage.sync.set({ [this.currentProfileKey]: name });
+async function initializeDefaultProfile() {
+  const profiles = await getAllProfiles();
+  if (profiles.length === 0) {
+    await saveProfile(getDefaultProfile());
+    await setCurrentProfile('Default');
   }
+}
 
-  async saveProfile(profile) {
-    const profiles = await this.getProfiles();
-    const index = profiles.findIndex(p => p.name === profile.name);
+async function exportProfiles() {
+  const profiles = await getAllProfiles();
+  return JSON.stringify(profiles, null, 2);
+}
+
+async function importProfiles(jsonString) {
+  const profiles = JSON.parse(jsonString);
+  if (!Array.isArray(profiles)) {
+    throw new Error('Invalid profile format: expected array');
+  }
+  await chrome.storage.sync.set({ [STORAGE_KEY]: profiles });
+}
+
+// === OCR Client ===
+async function processOCR(imageDataUrl, ocrUrl, languages) {
+  // Konvertiere DataURL zu Blob für Multipart-Upload
+  const response = await fetch(imageDataUrl);
+  const blob = await response.blob();
+  
+  const formData = new FormData();
+  formData.append('file', blob, 'screenshot.png');
+  if (languages && languages.length > 0) {
+    formData.append('languages', languages.join(','));
+  }
+  
+  try {
+    const ocrResponse = await fetch(ocrUrl, {
+      method: 'POST',
+      body: formData,
+      timeout: 30000
+    });
     
-    if (index >= 0) {
-      profiles[index] = profile;
-    } else {
-      profiles.push(profile);
+    if (!ocrResponse.ok) {
+      throw new Error(`OCR HTTP ${ocrResponse.status}`);
     }
     
-    await chrome.storage.sync.set({ [this.storageKey]: profiles });
-  }
-
-  async deleteProfile(name) {
-    const profiles = await this.getProfiles();
-    const filtered = profiles.filter(p => p.name !== name);
-    await chrome.storage.sync.set({ [this.storageKey]: filtered });
-  }
-
-  async initializeDefaultProfile() {
-    const profiles = await this.getProfiles();
-    if (profiles.length === 0) {
-      const defaultProfile = {
-        name: 'Default',
-        ollamaUrl: 'http://localhost:11434',
-        model: 'llama2',
-        ocrUrl: 'http://localhost:8080/ocr',
-        ocrLanguages: ['deu', 'eng'],
-        prompt: 'Du bist ein hilfreicher Assistent. Antworte präzise und kurz.',
-        filters: {
-          regex: '',
-          domInclude: [],
-          domExclude: []
-        }
-      };
-      await this.saveProfile(defaultProfile);
-      await this.setCurrentProfile('Default');
-    }
-  }
-
-  getDefaultProfile() {
-    return {
-      name: 'Default',
-      ollamaUrl: 'http://localhost:11434',
-      model: 'llama2',
-      ocrUrl: 'http://localhost:8080/ocr',
-      ocrLanguages: ['deu', 'eng'],
-      prompt: 'Du bist ein hilfreicher Assistent. Antworte präzise und kurz.',
-      filters: {
-        regex: '',
-        domInclude: [],
-        domExclude: []
-      }
-    };
-  }
-
-  async exportProfiles() {
-    const profiles = await this.getProfiles();
-    return JSON.stringify(profiles, null, 2);
-  }
-
-  async importProfiles(jsonString) {
-    const profiles = JSON.parse(jsonString);
-    if (!Array.isArray(profiles)) {
-      throw new Error('Invalid profile format');
-    }
-    await chrome.storage.sync.set({ [this.storageKey]: profiles });
+    const result = await ocrResponse.json();
+    return result.text || result.stdout || '';
+  } catch (error) {
+    throw new Error(`OCR error: ${error.message}`);
   }
 }
 
-class PromptBuilder {
-  constructor(profile) {
-    this.profile = profile;
-  }
-
-  build(ocrText, userQuestion = '') {
-    const parts = [
-      `System: ${this.profile.prompt}`,
-      `Content:\n${ocrText}`
-    ];
-
-    if (userQuestion) {
-      parts.push(`User question: ${userQuestion}`);
+// === KI Client ===
+async function askOllama(ollamaUrl, model, prompt) {
+  try {
+    const response = await fetch(`${ollamaUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        prompt: prompt,
+        stream: false
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Ollama HTTP ${response.status}`);
     }
-
-    return parts.join('\n\n');
+    
+    const data = await response.json();
+    return data.response || '';
+  } catch (error) {
+    throw new Error(`Ollama error: ${error.message}`);
   }
 }
 
-class OllamaClient {
-  constructor(ollamaUrl, model) {
-    this.url = ollamaUrl;
-    this.model = model;
+// === Prompt Builder ===
+function buildPrompt(systemPrompt, ocrText, userQuestion) {
+  const parts = [
+    `System: ${systemPrompt}`,
+    `Content:\n${ocrText}`
+  ];
+  
+  if (userQuestion && userQuestion.trim()) {
+    parts.push(`User question: ${userQuestion}`);
   }
-
-  async generate(prompt) {
-    try {
-      const response = await fetch(`${this.url}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: this.model,
-          prompt: prompt,
-          stream: false
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.response;
-    } catch (error) {
-      throw new Error(`Ollama error: ${error.message}`);
-    }
-  }
+  
+  return parts.join('\n\n');
 }
 
-class OCRClient {
-  constructor(ocrUrl) {
-    this.url = ocrUrl;
-  }
-
-  async process(imageBase64, languages = ['deu', 'eng']) {
-    try {
-      const response = await fetch(this.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          image: imageBase64,
-          languages: languages.join(',')
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.text || '';
-    } catch (error) {
-      throw new Error(`OCR error: ${error.message}`);
-    }
-  }
-}
-
-// Globale Instanzen
-const profileManager = new ProfileManager();
-let currentProfile = null;
-
-// Initialisierung
+// === Initialization ===
 chrome.runtime.onInstalled.addListener(async () => {
-  await profileManager.initializeDefaultProfile();
-  currentProfile = await profileManager.getCurrentProfile();
+  await initializeDefaultProfile();
 });
 
-// Message Handler
+// === Message Handler ===
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   (async () => {
     try {
       switch (request.action) {
-        case 'getProfile':
-          currentProfile = await profileManager.getCurrentProfile();
-          sendResponse({ success: true, profile: currentProfile });
+        case 'getProfile': {
+          const profile = await getCurrentProfile();
+          sendResponse({ success: true, profile });
           break;
+        }
 
-        case 'setProfile':
-          await profileManager.setCurrentProfile(request.profileName);
-          currentProfile = await profileManager.getCurrentProfile();
-          sendResponse({ success: true, profile: currentProfile });
+        case 'setProfile': {
+          await setCurrentProfile(request.profileName);
+          const profile = await getCurrentProfile();
+          sendResponse({ success: true, profile });
           break;
+        }
 
-        case 'getProfiles':
-          const profiles = await profileManager.getProfiles();
+        case 'getAllProfiles': {
+          const profiles = await getAllProfiles();
           sendResponse({ success: true, profiles });
           break;
+        }
 
-        case 'saveProfile':
-          await profileManager.saveProfile(request.profile);
+        case 'saveProfile': {
+          await saveProfile(request.profile);
           sendResponse({ success: true });
           break;
+        }
 
-        case 'deleteProfile':
-          await profileManager.deleteProfile(request.profileName);
+        case 'deleteProfile': {
+          await deleteProfile(request.profileName);
           sendResponse({ success: true });
           break;
+        }
 
-        case 'exportProfiles':
-          const exported = await profileManager.exportProfiles();
-          sendResponse({ success: true, data: exported });
+        case 'exportProfiles': {
+          const data = await exportProfiles();
+          sendResponse({ success: true, data });
           break;
+        }
 
-        case 'importProfiles':
-          await profileManager.importProfiles(request.data);
+        case 'importProfiles': {
+          await importProfiles(request.data);
           sendResponse({ success: true });
           break;
+        }
 
-        case 'screenshotAndOCR':
-          {
-            if (!currentProfile) {
-              currentProfile = await profileManager.getCurrentProfile();
-            }
-            const imageData = await chrome.tabs.captureVisibleTab();
-            const ocrClient = new OCRClient(currentProfile.ocrUrl);
-            const ocrText = await ocrClient.process(imageData, currentProfile.ocrLanguages);
-            sendResponse({ success: true, ocrText, imageData });
-          }
+        case 'screenshotAndOCR': {
+          const profile = await getCurrentProfile();
+          const imageDataUrl = await chrome.tabs.captureVisibleTab();
+          const ocrText = await processOCR(imageDataUrl, profile.ocrUrl, profile.ocrLanguages);
+          sendResponse({ success: true, ocrText });
           break;
+        }
 
-        case 'askAI':
-          {
-            if (!currentProfile) {
-              currentProfile = await profileManager.getCurrentProfile();
-            }
-            const promptBuilder = new PromptBuilder(currentProfile);
-            const fullPrompt = promptBuilder.build(request.ocrText, request.question);
-            const ollamaClient = new OllamaClient(currentProfile.ollamaUrl, currentProfile.model);
-            const aiResponse = await ollamaClient.generate(fullPrompt);
-            sendResponse({ success: true, response: aiResponse });
-          }
+        case 'askAI': {
+          const profile = await getCurrentProfile();
+          const prompt = buildPrompt(profile.prompt, request.ocrText, request.question);
+          const response = await askOllama(profile.ollamaUrl, profile.model, prompt);
+          sendResponse({ success: true, response, prompt });
           break;
+        }
 
         default:
           sendResponse({ success: false, error: 'Unknown action' });
@@ -264,5 +228,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   })();
 
-  return true; // Keep the message channel open for async response
+  return true;
 });

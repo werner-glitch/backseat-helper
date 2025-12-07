@@ -1,14 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Backseat Driver",
+  "name": "Backseat Helper",
   "version": "0.1.0",
-  "description": "KI Co-Pilot für Webseiten-Analyse mit OCR",
+  "description": "Kritischer KI-Begleiter für Webseiten mit OCR-Unterstützung",
   "permissions": [
     "storage",
     "tabs",
     "activeTab",
-    "scripting",
-    "webRequest"
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"

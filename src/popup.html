@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Backseat Driver</title>
+  <title>Backseat Helper</title>
   <style>
     * {
       box-sizing: border-box;
@@ -13,7 +13,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      width: 300px;
+      width: 320px;
       padding: 16px;
       background: #f9f9f9;
       color: #333;
@@ -27,40 +27,90 @@
       font-size: 18px;
       color: #1976d2;
       margin-bottom: 12px;
+      font-weight: 600;
     }
 
     .status {
       padding: 12px;
       border-radius: 6px;
       font-size: 13px;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      border-left: 3px solid #ccc;
     }
 
     .status.active {
       background: #c8e6c9;
       color: #2e7d32;
-      border-left: 3px solid #4caf50;
+      border-left-color: #4caf50;
     }
 
-    .status.inactive {
-      background: #ffcccc;
-      color: #c62828;
-      border-left: 3px solid #f44336;
-    }
-
-    .info {
+    .info-box {
       background: #e3f2fd;
       padding: 12px;
       border-radius: 6px;
       font-size: 12px;
       color: #1565c0;
-      line-height: 1.4;
-      margin-bottom: 12px;
+      line-height: 1.5;
+      margin-bottom: 16px;
     }
 
     .buttons {
       display: flex;
       flex-direction: column;
+      gap: 8px;
+    }
+
+    button {
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: #1976d2;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1565c0;
+    }
+  </style>
+</head>
+<body>
+  <div class="popup-container">
+    <h1>Backseat Helper</h1>
+    
+    <div id="statusDiv" class="status"></div>
+
+    <div class="info-box">
+      💬 Chat-Panel ist auf jeder Seite verfügbar.<br>
+      Nutze die Buttons zum Screenshot & Fragen stellen.
+    </div>
+
+    <div class="buttons">
+      <button class="btn-primary" id="openSettings">⚙️ Einstellungen</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('openSettings').addEventListener('click', () => {
+      chrome.runtime.openOptionsPage();
+    });
+
+    chrome.runtime.sendMessage({ action: 'getProfile' }, (response) => {
+      if (response && response.success) {
+        const statusDiv = document.getElementById('statusDiv');
+        statusDiv.textContent = `Profil: ${response.profile.name}`;
+        statusDiv.className = 'status active';
+      }
+    });
+  </script>
+</body>
+</html>
       gap: 8px;
     }
 

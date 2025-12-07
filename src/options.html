@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Backseat Driver - Einstellungen</title>
+  <title>Backseat Helper - Einstellungen</title>
   <style>
     * {
       box-sizing: border-box;
@@ -18,12 +18,11 @@
     }
 
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       background: white;
       border-radius: 8px;
       padding: 24px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     h1 {
@@ -34,10 +33,11 @@
     }
 
     h2 {
-      color: #424242;
+      color: #333;
       margin-top: 24px;
       margin-bottom: 12px;
       font-size: 18px;
+      font-weight: 600;
     }
 
     .form-group {
@@ -49,38 +49,44 @@
       font-weight: 600;
       margin-bottom: 6px;
       color: #555;
+      font-size: 14px;
     }
 
     input[type="text"],
     input[type="url"],
-    textarea,
-    select {
+    textarea {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 6px;
       font-size: 14px;
-      font-family: monospace;
-    }
-
-    input[type="text"]:focus,
-    input[type="url"]:focus,
-    textarea:focus,
-    select:focus {
-      outline: none;
-      border-color: #1976d2;
-      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     textarea {
+      font-family: monospace;
+      font-size: 12px;
       resize: vertical;
-      min-height: 100px;
+      min-height: 80px;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #1976d2;
+    }
+
+    .helper-text {
+      font-size: 12px;
+      color: #757575;
+      margin-top: 4px;
     }
 
     .button-group {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
 
     button {
@@ -134,7 +140,7 @@
       background: #f9f9f9;
       border-radius: 6px;
       margin-bottom: 8px;
-      border-left: 3px solid #1976d2;
+      border-left: 3px solid #ccc;
     }
 
     .profile-item.active {
@@ -144,12 +150,12 @@
 
     .profile-name {
       font-weight: 600;
-      color: #333;
+      flex: 1;
     }
 
     .profile-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
 
     .profile-actions button {
@@ -180,17 +186,6 @@
       border-left: 3px solid #f44336;
     }
 
-    .helper-text {
-      font-size: 12px;
-      color: #757575;
-      margin-top: 4px;
-    }
-
-    .filter-input {
-      font-family: monospace;
-      font-size: 12px;
-    }
-
     .modal {
       display: none;
       position: fixed;
@@ -218,20 +213,21 @@
       overflow-y: auto;
     }
 
-    .modal-header {
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #e0e0e0;
+    .form-section {
+      display: none;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e0e0e0;
     }
 
-    .modal-header h2 {
-      margin: 0;
+    .form-section.show {
+      display: block;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Backseat Driver - Einstellungen</h1>
+    <h1>Backseat Helper – Einstellungen</h1>
 
     <div id="statusMessage" class="status-message"></div>
 
@@ -244,7 +240,8 @@
       <button class="btn-secondary" id="importBtn">Importieren</button>
     </div>
 
-    <div id="profileForm" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid #e0e0e0;">
+    <!-- Profile Edit Form -->
+    <div id="profileForm" class="form-section">
       <h2>Profil bearbeiten</h2>
 
       <div class="form-group">
@@ -255,55 +252,55 @@
       <div class="form-group">
         <label for="ollamaUrl">Ollama URL</label>
         <input type="url" id="ollamaUrl" placeholder="http://localhost:11434">
-        <div class="helper-text">Adresse des Ollama-Servers</div>
+        <div class="helper-text">Beispiel: http://localhost:11434</div>
       </div>
 
       <div class="form-group">
         <label for="model">Modell</label>
-        <input type="text" id="model" placeholder="z.B. llama2">
-        <div class="helper-text">Name des zu verwendenden LLM-Modells</div>
+        <input type="text" id="model" placeholder="z.B. llama3">
+        <div class="helper-text">Name des zu verwendenden Modells</div>
       </div>
 
       <div class="form-group">
         <label for="ocrUrl">OCR Server URL</label>
-        <input type="url" id="ocrUrl" placeholder="http://localhost:8080/ocr">
-        <div class="helper-text">Optional: OCR-Service für Screenshot-Extraktion</div>
+        <input type="url" id="ocrUrl" placeholder="http://localhost:8884/tesseract">
+        <div class="helper-text">Default: http://localhost:8884/tesseract</div>
       </div>
 
       <div class="form-group">
-        <label for="ocrLanguages">OCR Sprachen</label>
-        <input type="text" id="ocrLanguages" placeholder="deu,eng" class="filter-input">
-        <div class="helper-text">Komma-getrennt, z.B. deu,eng,fra</div>
+        <label for="ocrLanguages">OCR Sprachen (Komma-getrennt)</label>
+        <input type="text" id="ocrLanguages" placeholder="deu,eng">
+        <div class="helper-text">z.B. deu,eng,fra – Codes für Tesseract</div>
       </div>
 
       <div class="form-group">
-        <label for="prompt">System Prompt</label>
-        <textarea id="prompt" placeholder="Du bist ein hilfreicher Assistent..."></textarea>
+        <label for="prompt">System-Prompt</label>
+        <textarea id="prompt" placeholder="Du bist ein kritischer, neugieriger Begleiter..."></textarea>
         <div class="helper-text">Instruktionen für das KI-Modell</div>
       </div>
 
-      <h3>Filter</h3>
+      <h2>Filter (optional)</h2>
 
       <div class="form-group">
         <label for="regexFilter">Text-Filter (Regex)</label>
-        <textarea id="regexFilter" class="filter-input" placeholder="z.B. \d{3}-\d{4}"></textarea>
-        <div class="helper-text">Regex-Pattern zum Filtern von Texten</div>
+        <textarea id="regexFilter" placeholder="z.B. \\d{3}-\\d{4}"></textarea>
+        <div class="helper-text">Regex-Pattern zum Filtern; leer = kein Filter</div>
       </div>
 
       <div class="form-group">
-        <label for="domInclude">DOM Include (CSS-Selektoren)</label>
-        <textarea id="domInclude" class="filter-input" placeholder="main
+        <label for="domInclude">DOM Include (CSS-Selektoren, eine pro Zeile)</label>
+        <textarea id="domInclude" placeholder="main
 .content
 article"></textarea>
-        <div class="helper-text">Eine Zeile pro Selektor - nur diese Elemente einbeziehen</div>
+        <div class="helper-text">Nur diese Elemente einbeziehen; leer = alles</div>
       </div>
 
       <div class="form-group">
-        <label for="domExclude">DOM Exclude (CSS-Selektoren)</label>
-        <textarea id="domExclude" class="filter-input" placeholder="nav
+        <label for="domExclude">DOM Exclude (CSS-Selektoren, eine pro Zeile)</label>
+        <textarea id="domExclude" placeholder="nav
 footer
 .ads"></textarea>
-        <div class="helper-text">Eine Zeile pro Selektor - diese Elemente ausschließen</div>
+        <div class="helper-text">Diese Elemente ausschließen</div>
       </div>
 
       <div class="button-group">
@@ -313,14 +310,13 @@ footer
     </div>
   </div>
 
+  <!-- Import Modal -->
   <div id="importModal" class="modal">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2>Profile importieren</h2>
-      </div>
+      <h2>Profile importieren</h2>
       <div class="form-group">
         <label for="importText">JSON einfügen:</label>
-        <textarea id="importText" style="min-height: 300px; font-family: monospace;"></textarea>
+        <textarea id="importText" style="min-height: 300px;"></textarea>
       </div>
       <div class="button-group">
         <button class="btn-primary" id="confirmImportBtn">Importieren</button>
